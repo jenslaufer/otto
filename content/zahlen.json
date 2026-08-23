@@ -1,8 +1,8 @@
 {
   "auftraege": 730,
   "basis": "https://jenslaufer.com/otto/",
-  "codezeilen": 21607,
-  "commits_assistant": 5319,
+  "codezeilen": 24392,
+  "commits_assistant": 5445,
   "cpu": "AMD Ryzen 5 3500U",
   "fingrab": {
     "dateien": 8,
@@ -10,10 +10,10 @@
     "minus": 144,
     "plus": 674,
     "uhrzeit": "03:26",
-    "version": "2.0.7"
+    "version": "2.0.8"
   },
   "kerne": 8,
-  "koautor_commits": 1808,
+  "koautor_commits": 1831,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -21,28 +21,28 @@
     "tagessatz": "2.000 €/Tag (netto)",
     "verfuegbar": "ab 15.09.2026"
   },
-  "nachrichten": 2306,
+  "nachrichten": 2380,
   "pr_repos": 32,
   "prs": 980,
   "ram_gb": 12,
   "reise": {
-    "gemessen": 45,
-    "juengste_minuten": 6,
-    "median_minuten": 15,
+    "gemessen": 60,
+    "juengste_minuten": 11,
+    "median_minuten": 12,
     "schnellste_minuten": 4
   },
   "schwarm": {
-    "fertig": 653,
+    "fertig": 654,
     "spitze_stunde": 8,
     "stunden_ab_drei": 43,
-    "tage": 122
+    "tage": 123
   },
-  "sitzungen": 2426,
+  "sitzungen": 2450,
   "skills": 118,
-  "stand": "2026-08-21",
+  "stand": "2026-08-23",
   "start": "2026-03-20",
-  "tage": 154,
-  "testfunktionen": 277,
+  "tage": 156,
+  "testfunktionen": 283,
   "units": 14,
   "weckzeiten_werktag": [
     1,
@@ -61,5 +61,5 @@
     13,
     17
   ],
-  "werkzeuge": 98
+  "werkzeuge": 106
 }
