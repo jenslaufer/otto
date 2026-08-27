@@ -80,6 +80,36 @@ half is load-bearing, not modesty: an autonomy claim without its limits is
 refutable in the first critical reply; with them it is evidence. A test asserts
 the limits are present in both languages.
 
+## The back office section: mechanism, never an amount
+
+Jens asked for it on 2026-08-27: the bookkeeping and the portfolio capture belong
+on the page too. Both data sets live outside this repo — the books as a year
+folder under `~/repos/<year>`, the portfolio in `~/repos/investments`.
+
+`_messe_buero()` reads two things and neither of them is money:
+
+- **How much the machine fetches by itself.** `holdings.csv` carries a
+  `price_source` per position (`yfinance:…`, `ibkr:…`, `fints:…`,
+  `enablebanking:…` or `manual`), so the file itself says what is automated and
+  what somebody has to type. The number is read, not estimated.
+- **How often the daily series actually hit**, and the longest gap in it. A
+  series that skips twelve days is not daily, and that belongs on the page.
+
+**No amount is ever read.** The mechanism is public, the holdings are not — a
+test asserts that no grouped or five-digit number reaches either language of the
+section, and the blocklist below is the second line of defence. The same rule
+keeps asset classes off the page: what Jens owns is not the point, that it is
+fetched without him is.
+
+The section states three limits, and they are not modesty. Positions without a
+source age quietly and look exactly like current ones; the daily series has gaps;
+and the series predates this setup by six years — it is kept alive here, not
+started here. The co-author count carries the same caveat as the PR numbers
+further up: it includes Jens's own sessions at the desk.
+
+Both halves must measure, or the whole section disappears. Half an answer is
+worse than none here, because nobody can see which half is missing.
+
 ## The blocklist lives outside this repo — on purpose
 
 `pruefe_privat()` aborts the build if a passport number, IBAN, e-mail address or

@@ -1080,5 +1080,221 @@ class TestKeinChat(unittest.TestCase):
                 self.assertIn(wort, seite)
 
 
+BUERO_BEISPIEL = {
+    "jahr": 2026,
+    "buchungen": 160,
+    "belege": 67,
+    "auszuege": 18,
+    "buch_commits": 62,
+    "buch_maschine": 43,
+    "posten": 32,
+    "posten_maschine": 26,
+    "quellen": 5,
+    "snapshots": 126,
+    "kalendertage": 161,
+    "luecke": 12,
+    "reihe_seit": 2020,
+}
+
+
+class TestBueroMessung(unittest.TestCase):
+    """Die Messung hinter Buchhaltung und Vermoegenserfassung.
+
+    Beide Zahlenreihen liegen ausserhalb dieses Repos, in Jens' Buch- und
+    Anlagedaten. Gemessen wird die MECHANIK — wie viele Posten sich die
+    Maschine selbst holt, wie oft die Reihe gerissen ist — nie ein Betrag.
+    """
+
+    def _buch_ordner(self, wurzel: Path, jahr: str = "2026", zeilen: int = 3):
+        ordner = wurzel / jahr
+        (ordner / "Buchungssaetze").mkdir(parents=True)
+        (ordner / "Belege").mkdir()
+        (ordner / "Kontoauszuege").mkdir()
+        kopf = "Journalnummer,Buchungssatznummer,Belegnummer,Belegdatum,Buchungsdatum,Buchungstext,Konto,Typ,Betrag\n"
+        # Zwei Journalzeilen je Buchungssatz — Soll und Haben.
+        rumpf = "".join(
+            f"{i},{(i + 1) // 2},B{i},01.01.{jahr},01.01.{jahr},Text,0900,Soll,1.00\n"
+            for i in range(1, zeilen * 2 + 1)
+        )
+        (ordner / "Buchungssaetze" / "journal.csv").write_text(kopf + rumpf, encoding="utf-8")
+        for i in range(2):
+            (ordner / "Belege" / f"beleg{i}.pdf").write_text("x", encoding="utf-8")
+        (ordner / "Kontoauszuege" / "KO01.pdf").write_text("x", encoding="utf-8")
+        return ordner
+
+    def _anlagen(self, wurzel: Path, quellen: list[str], tage: list[str]):
+        daten = wurzel / "investments" / "data"
+        (daten / "daily").mkdir(parents=True)
+        zeilen = ["group,desc,owner,ticker,isin,wkn,quantity,source,currency,price_source"]
+        for i, q in enumerate(quellen):
+            zeilen.append(f"etfs,Posten {i},privat,T{i},ISIN,WKN,1,depot,EUR,{q}")
+        (daten / "holdings.csv").write_text("\n".join(zeilen) + "\n", encoding="utf-8")
+        for tag in tage:
+            (daten / "daily" / f"{tag}.csv").write_text("a,b,1,EUR,x\n", encoding="utf-8")
+        return daten
+
+    def test_ohne_die_daten_gibt_es_none_statt_null(self):
+        # Dieselbe Regel wie ueberall hier: eine 0 laese sich als Befund lesen.
+        with tempfile.TemporaryDirectory() as tmp:
+            with unittest.mock.patch.object(build, "REPOS", Path(tmp)):
+                self.assertIsNone(build._messe_buero())
+
+    def test_zaehlt_buchungssaetze_nicht_journalzeilen(self):
+        # Ein Buchungssatz hat immer mindestens zwei Zeilen (Soll und Haben).
+        # Wer Zeilen zaehlt, meldet die doppelte Arbeit.
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel, zeilen=5)
+            self._anlagen(wurzel, ["yfinance:A", "manual"], ["2026-04-01"])
+            with unittest.mock.patch.object(build, "REPOS", wurzel), \
+                 unittest.mock.patch.object(build, "START", build.date(2026, 3, 20)):
+                buero = build._messe_buero()
+        self.assertEqual(buero["buchungen"], 5)
+        self.assertEqual(buero["belege"], 2)
+        self.assertEqual(buero["auszuege"], 1)
+
+    def test_nimmt_das_juengste_buchjahr(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel, jahr="2025", zeilen=9)
+            self._buch_ordner(wurzel, jahr="2026", zeilen=4)
+            self._anlagen(wurzel, ["yfinance:A"], ["2026-04-01"])
+            with unittest.mock.patch.object(build, "REPOS", wurzel), \
+                 unittest.mock.patch.object(build, "START", build.date(2026, 3, 20)):
+                buero = build._messe_buero()
+        self.assertEqual(buero["jahr"], 2026)
+        self.assertEqual(buero["buchungen"], 4)
+
+    def test_manuelle_posten_zaehlen_nicht_als_gemessen(self):
+        # Der ganze Punkt des Abschnitts: was die Maschine NICHT holt.
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel)
+            self._anlagen(
+                wurzel,
+                ["yfinance:A", "yfinance:B", "ibkr:x", "fints:y", "manual", "manual"],
+                ["2026-04-01"],
+            )
+            with unittest.mock.patch.object(build, "REPOS", wurzel), \
+                 unittest.mock.patch.object(build, "START", build.date(2026, 3, 20)):
+                buero = build._messe_buero()
+        self.assertEqual(buero["posten"], 6)
+        self.assertEqual(buero["posten_maschine"], 4)
+        self.assertEqual(buero["quellen"], 3)  # yfinance, ibkr, fints
+
+    def test_leere_quelle_gilt_als_handarbeit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel)
+            self._anlagen(wurzel, ["yfinance:A", ""], ["2026-04-01"])
+            with unittest.mock.patch.object(build, "REPOS", wurzel), \
+                 unittest.mock.patch.object(build, "START", build.date(2026, 3, 20)):
+                buero = build._messe_buero()
+        self.assertEqual(buero["posten_maschine"], 1)
+
+    def test_misst_die_luecke_in_der_reihe(self):
+        # Die groesste Luecke ist die ehrliche Zahl: eine taegliche Reihe, die
+        # zwoelf Tage aussetzt, ist nicht taeglich.
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel)
+            self._anlagen(
+                wurzel,
+                ["yfinance:A"],
+                ["2019-01-01", "2026-03-20", "2026-03-21", "2026-04-02"],
+            )
+            with unittest.mock.patch.object(build, "REPOS", wurzel), \
+                 unittest.mock.patch.object(build, "START", build.date(2026, 3, 20)):
+                buero = build._messe_buero()
+        self.assertEqual(buero["snapshots"], 3)        # nur ab START
+        self.assertEqual(buero["luecke"], 12)          # 21.03. -> 02.04.
+        self.assertEqual(buero["kalendertage"], 14)    # 20.03. -> 02.04.
+        self.assertEqual(buero["reihe_seit"], 2019)    # die Reihe ist aelter als ich
+
+    def test_ohne_anlagedaten_faellt_die_ganze_messung_aus(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._buch_ordner(wurzel)
+            with unittest.mock.patch.object(build, "REPOS", wurzel):
+                self.assertIsNone(build._messe_buero())
+
+    def test_ohne_buchjahr_faellt_die_ganze_messung_aus(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._anlagen(wurzel, ["yfinance:A"], ["2026-04-01"])
+            with unittest.mock.patch.object(build, "REPOS", wurzel):
+                self.assertIsNone(build._messe_buero())
+
+
+class TestBueroAbschnitt(unittest.TestCase):
+    def test_ohne_messung_faellt_der_abschnitt_weg(self):
+        self.assertEqual(build._buero_abschnitt(None), "")
+        self.assertEqual(build._buero_abschnitt(None, "en"), "")
+
+    def test_abschnitt_nennt_die_gemessenen_zahlen(self):
+        html = build._buero_abschnitt(BUERO_BEISPIEL)
+        for wert in ("160", "67", "32", "26", "126"):
+            with self.subTest(wert=wert):
+                self.assertIn(wert, html)
+
+    def test_abschnitt_nennt_die_grenze_nicht_nur_die_leistung(self):
+        # Ohne die Handarbeit und die Luecke waere der Abschnitt Werbung.
+        html = build._buero_abschnitt(BUERO_BEISPIEL)
+        self.assertIn("einschraenkung", html)
+        # Die Zahl der Posten ohne Quelle wird gerechnet, nicht getippt:
+        # 32 - 26 = 6.
+        self.assertIn("6 Positionen", html)
+        self.assertIn("12", html)              # die groesste Luecke
+
+    def test_abschnitt_behauptet_nicht_die_reihe_gebaut_zu_haben(self):
+        # Die Reihe laeuft seit 2020, ich seit 2026. Das gehoert dazu.
+        html = build._buero_abschnitt(BUERO_BEISPIEL)
+        self.assertIn("2020", html)
+
+    def test_abschnitt_nennt_keine_betraege(self):
+        # Die harte Grenze: die Mechanik ist oeffentlich, die Zahlen nicht.
+        for sprache in ("de", "en"):
+            html = build._buero_abschnitt(BUERO_BEISPIEL, sprache)
+            with self.subTest(sprache=sprache):
+                self.assertNotIn("€", html)
+                self.assertNotIn("EUR", html)
+                # Ein Betrag sieht so aus: gruppiert (1.234 / 1,234) oder
+                # fuenfstellig aufwaerts. Eine Jahreszahl mit Komma dahinter
+                # ist keiner — die erste Fassung dieser Pruefung hielt
+                # "2020," fuer einen Betrag.
+                self.assertIsNone(re.search(r"\d{1,3}(?:[.,]\d{3})+|\d{5,}", html))
+
+    def test_englische_fassung_ist_englisch(self):
+        html = build._buero_abschnitt(BUERO_BEISPIEL, "en")
+        for wort in ("Buchung", "Beleg", "Maschine", "täglich"):
+            with self.subTest(wort=wort):
+                self.assertNotIn(wort, html)
+
+    def test_abschnitt_hat_keine_ascii_umschrift(self):
+        html = build._buero_abschnitt(BUERO_BEISPIEL)
+        for falsch in ("Vermoegen", "taeglich", "Buchfuehrung", "haelt"):
+            with self.subTest(falsch=falsch):
+                self.assertNotIn(falsch, html)
+
+    def test_abschnitt_landet_auf_beiden_seiten(self):
+        zahlen = dict(ZAHLEN_BEISPIEL, buero=BUERO_BEISPIEL)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertIn("160", build.rendere(zahlen, sprache))
+
+    def test_seite_baut_auch_ohne_buero_zahlen(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen.pop("buero", None)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                seite = build.rendere(zahlen, sprache)
+                self.assertNotIn("{{BUERO}}", seite)
+
+    def test_buero_ist_kein_pflichtfeld(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen.pop("buero", None)
+        build.pruefe_zahlen(zahlen)  # darf nicht werfen
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

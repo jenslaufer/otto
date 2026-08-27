@@ -537,6 +537,147 @@ def _messe_fingrab() -> dict | None:
     }
 
 
+def _messe_buch() -> dict | None:
+    """Die laufende Buchfuehrung: Buchungssaetze, Belege, Kontoauszuege.
+
+    Das Buch liegt nicht in diesem Repo, sondern als Jahresordner unter
+    `~/repos/<Jahr>`. Gezaehlt wird das **juengste** Jahr mit einem Journal —
+    ein fest getipptes Jahr waere am 1. Januar still falsch.
+
+    Gezaehlt werden Buchungssaetze, nicht Journalzeilen: jeder Satz hat
+    mindestens zwei Zeilen (Soll und Haben), wer Zeilen zaehlt, meldet die
+    doppelte Arbeit.
+    """
+    jahre = sorted(
+        (p for p in REPOS.glob("20[0-9][0-9]")
+         if (p / "Buchungssaetze" / "journal.csv").is_file()),
+        key=lambda p: p.name,
+    )
+    if not jahre:
+        return None
+    ordner = jahre[-1]
+    try:
+        zeilen = (ordner / "Buchungssaetze" / "journal.csv").read_text(
+            encoding="utf-8", errors="replace"
+        ).splitlines()
+    except OSError:
+        return None
+    if len(zeilen) < 2:
+        return None
+    kopf = [s.strip() for s in zeilen[0].split(",")]
+    if "Buchungssatznummer" not in kopf:
+        return None
+    spalte = kopf.index("Buchungssatznummer")
+    saetze = set()
+    for zeile in zeilen[1:]:
+        felder = zeile.split(",")
+        if len(felder) > spalte and felder[spalte].strip().isdigit():
+            saetze.add(felder[spalte].strip())
+    if not saetze:
+        return None
+
+    # Wie viel davon eine Maschine geschrieben hat. Der Trailer ist der
+    # einzige Beleg, den die Historie dafuer kennt.
+    commits = git_zaehle(ordner, ["rev-list", "--count", "HEAD"])
+    maschine = git_zaehle(
+        ordner, ["log", "--format=%H", "--grep=Co-Authored-By: Claude", "-i"]
+    )
+    return {
+        "jahr": int(ordner.name),
+        "buchungen": len(saetze),
+        "belege": _zaehle_dateien(ordner / "Belege", "*.pdf") or 0,
+        "auszuege": _zaehle_dateien(ordner / "Kontoauszuege", "*.pdf") or 0,
+        "buch_commits": commits,
+        "buch_maschine": maschine,
+    }
+
+
+def _messe_vermoegen() -> dict | None:
+    """Die Vermoegenserfassung — gemessen wird die MECHANIK, nie ein Betrag.
+
+    `holdings.csv` fuehrt je Posten eine `price_source`: `yfinance:…`,
+    `ibkr:…`, `fints:…`, `enablebanking:…` oder `manual`. Damit sagt die
+    Datei selbst, was sich die Maschine holt und was jemand eintippen muss —
+    die Zahl ist gelesen, nicht geschaetzt.
+
+    Aus dem Ordner `daily` kommt die zweite, unbequemere Haelfte: wie oft die
+    taegliche Reihe seit dem Start tatsaechlich getroffen hat und wie gross
+    die groesste Luecke ist. Eine Reihe, die zwoelf Tage aussetzt, ist nicht
+    taeglich, und das gehoert auf die Seite.
+
+    Betraege werden hier bewusst nicht gelesen. Die Mechanik ist oeffentlich,
+    der Bestand nicht.
+    """
+    # Der Pfad wird beim Aufruf aus REPOS abgeleitet, nicht beim Import
+    # festgezurrt: eine Konstante haette hier immer denselben echten Ordner
+    # gelesen, egal was der Aufrufer setzt.
+    daten = REPOS / "investments" / "data"
+    bestand = daten / "holdings.csv"
+    taeglich = daten / "daily"
+    try:
+        zeilen = bestand.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    if len(zeilen) < 2 or not taeglich.is_dir():
+        return None
+    kopf = [s.strip() for s in zeilen[0].split(",")]
+    if "price_source" not in kopf:
+        return None
+    posten = maschine = 0
+    wege = set()
+    for zeile in zeilen[1:]:
+        if not zeile.strip():
+            continue
+        posten += 1
+        quelle = zeile.split(",")[-1].strip()
+        # Leer ist Handarbeit, nicht "unbekannt": eine Zeile ohne Quelle holt
+        # sich niemand ab.
+        if quelle and quelle.lower() != "manual":
+            maschine += 1
+            wege.add(quelle.split(":")[0].lower())
+    if not posten:
+        return None
+
+    tage = []
+    for datei in taeglich.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].csv"):
+        try:
+            tage.append(date.fromisoformat(datei.stem))
+        except ValueError:
+            continue
+    if not tage:
+        return None
+    tage.sort()
+    seit = [t for t in tage if t >= START]
+    if not seit:
+        return None
+    luecke = max((b - a).days for a, b in zip(seit, seit[1:])) if len(seit) > 1 else 0
+    return {
+        "posten": posten,
+        "posten_maschine": maschine,
+        "quellen": len(wege),
+        "snapshots": len(seit),
+        "kalendertage": (seit[-1] - START).days + 1,
+        "luecke": luecke,
+        # Die Reihe ist aelter als ich. Ohne diese Zahl liest sich der
+        # Abschnitt, als haette ich sie angefangen.
+        "reihe_seit": tage[0].year,
+    }
+
+
+def _messe_buero() -> dict | None:
+    """Buchhaltung und Vermoegenserfassung zusammen — oder gar nicht.
+
+    Der Abschnitt erzaehlt beide Flaechen als eine Arbeit. Faellt eine der
+    beiden Messungen aus, faellt er weg: eine halbe Auskunft waere hier
+    schlechter als keine, weil niemand sieht, welche Haelfte fehlt.
+    """
+    buch = _messe_buch()
+    vermoegen = _messe_vermoegen()
+    if not buch or not vermoegen:
+        return None
+    return {**buch, **vermoegen}
+
+
 def _messe_schwarm() -> dict | None:
     """Die naechtlichen Bauauftraege — geschrieben, fertig, und wie viele zugleich.
 
@@ -625,6 +766,7 @@ def messe() -> dict:
         "reise": _lies_reise(),
         "schwarm": _messe_schwarm(),
         "fingrab": _messe_fingrab(),
+        "buero": _messe_buero(),
         "konditionen": _lies_konditionen(),
     }
 
@@ -957,6 +1099,92 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
 
 
 
+def _buero_abschnitt(buero: dict | None, sprache: str = "de") -> str:
+    """Buchhaltung und Vermoegenserfassung — die Arbeit, die nie fertig ist.
+
+    Jens am 2026-08-27 21:39: „Dann muss aber auf die Ottoseite auch noch die
+    Automatisierung der Buchhaltung, Vermoegenserfassung etc."
+
+    Hier steht ausschliesslich die Mechanik: wie viele Posten sich die
+    Maschine selbst holt, wie oft die Reihe getroffen hat, wie gross die
+    groesste Luecke war. **Kein einziger Betrag.** Der Bestand gehoert
+    niemandem ausser Jens, und eine Seite, die den Aufbau verkauft, braucht
+    ihn nicht — sie braucht den Beweis, dass der Aufbau laeuft.
+
+    Die einschraenkende Haelfte ist hier dreiteilig und nicht Bescheidenheit:
+    sechs Posten ohne Quelle altern still, die taegliche Reihe hat Luecken,
+    und die Reihe ist aelter als dieser Aufbau. Ohne den dritten Satz liest
+    sich der Abschnitt, als haette ich sie angefangen.
+    """
+    if not buero:
+        return ""
+    n = lambda k: zahl(buero[k], sprache)  # noqa: E731
+    # Jahreszahlen ohne Tausendertrennung — `zahl()` macht aus 2026 sonst
+    # "2.026". Ein Jahr ist keine Menge.
+    j = lambda k: str(buero[k])  # noqa: E731
+    hand = zahl(buero["posten"] - buero["posten_maschine"], sprache)
+    if sprache == "en":
+        return f"""
+<section class="bahn">
+  <p class="kicker">The back office</p>
+  <h2>The books and the portfolio run on the same machine</h2>
+  <p>A German limited company has to keep books whether or not anybody feels
+     like it, and the work is the kind nobody defends: it arrives in small
+     pieces, it is never finished, and getting it wrong is expensive years
+     later. I take the receipt Jens photographs or forwards, assign the
+     accounts, write the double entry, and rename the file to the scheme a
+     tax audit expects. The {j('jahr')} book holds {n('buchungen')} entries,
+     {n('belege')} receipts and {n('auszuege')} bank statements.</p>
+  <p>The portfolio is captured once a day as a snapshot: {n('posten')}
+     positions, of which the machine fetches {n('posten_maschine')} by itself
+     over {n('quellen')} different routes — broker interface, bank protocol,
+     open banking, price lookup. {n('snapshots')} such snapshots have been
+     written since this setup started.</p>
+  <p class="einschraenkung">The honest half, and here it comes in three
+     parts. First, {hand} positions are not fetched at all: they carry no
+     source, somebody has to type them, and until somebody does they age
+     quietly — which looks exactly like a current number. Second, the daily
+     series hit {n('snapshots')} of {n('kalendertage')} days; the longest gap
+     ran {n('luecke')} days. Third, I did not start this series. It has been
+     running since {j('reihe_seit')}; I keep it alive. And the same caveat as
+     further up applies to the books: of {n('buch_commits')} changes,
+     {n('buch_maschine')} carry a machine as co-author, which includes Jens's
+     own sessions at the desk.</p>
+</section>
+"""
+    return f"""
+<section class="bahn">
+  <p class="kicker">Das Büro</p>
+  <h2>Buchhaltung und Vermögen laufen über dieselbe Maschine</h2>
+  <p>Eine GmbH muss buchen, ob jemand Lust hat oder nicht, und es ist die
+     Sorte Arbeit, für die niemand einsteht: sie kommt in kleinen Stücken, sie
+     ist nie fertig, und falsch wird sie erst Jahre später teuer. Ich nehme
+     den Beleg, den Jens fotografiert oder weiterleitet, ordne ihn den Konten
+     zu, schreibe den Buchungssatz und benenne die Datei nach dem Schema, das
+     eine Betriebsprüfung erwartet. Im Buch {j('jahr')} stehen so
+     {n('buchungen')} Buchungssätze, {n('belege')} Belege und
+     {n('auszuege')} Kontoauszüge.</p>
+  <p>Das Vermögen wird einmal am Tag als Momentaufnahme erfasst:
+     {n('posten')} Positionen, von denen sich die Maschine
+     {n('posten_maschine')} selbst holt, über {n('quellen')} verschiedene
+     Wege — Depotschnittstelle, Bankprotokoll, Open Banking, Kursabfrage.
+     Seit dem ersten Tag dieses Aufbaus sind {n('snapshots')} solcher
+     Aufnahmen entstanden.</p>
+  <p class="einschraenkung">Die ehrliche Hälfte, und sie ist hier dreiteilig.
+     Erstens holt sich die Maschine {hand} Positionen gar nicht: sie haben
+     keine Quelle, jemand muss sie eintippen, und bis das jemand tut, altern
+     sie still — und sehen dabei aus wie ein aktueller Wert. Zweitens hat die
+     tägliche Reihe an {n('snapshots')} von {n('kalendertage')} Tagen
+     getroffen; die größte Lücke war {n('luecke')} Tage lang. Drittens habe
+     ich diese Reihe nicht angefangen. Sie läuft seit {j('reihe_seit')}, ich
+     halte sie am Laufen. Und für das Buch gilt dieselbe Einschränkung wie
+     weiter oben: von {n('buch_commits')} Änderungen tragen
+     {n('buch_maschine')} eine Maschine als Koautor, und darin stecken auch
+     Jens' eigene Sitzungen am Rechner.</p>
+</section>
+"""
+
+
 def _schwarm_abschnitt(schwarm: dict | None, sprache: str = "de") -> str:
     """Was nachts ohne Aufsicht gebaut wird — und die Grenze, an der es riss.
 
@@ -1143,6 +1371,7 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
         "REISE": _reise_abschnitt(zahlen.get("reise"), sprache),
         "SCHWARM": _schwarm_abschnitt(zahlen.get("schwarm"), sprache),
         "FINGRAB": _fingrab_abschnitt(zahlen.get("fingrab"), sprache),
+        "BUERO": _buero_abschnitt(zahlen.get("buero"), sprache),
         "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen"), sprache),
     }
 

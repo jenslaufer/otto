@@ -1,8 +1,23 @@
 {
-  "auftraege": 734,
+  "auftraege": 738,
   "basis": "https://jenslaufer.com/otto/",
-  "codezeilen": 26833,
-  "commits_assistant": 5579,
+  "buero": {
+    "auszuege": 18,
+    "belege": 67,
+    "buch_commits": 62,
+    "buch_maschine": 43,
+    "buchungen": 160,
+    "jahr": 2026,
+    "kalendertage": 161,
+    "luecke": 12,
+    "posten": 32,
+    "posten_maschine": 26,
+    "quellen": 5,
+    "reihe_seit": 2020,
+    "snapshots": 126
+  },
+  "codezeilen": 28044,
+  "commits_assistant": 5777,
   "cpu": "AMD Ryzen 5 3500U",
   "fingrab": {
     "dateien": 8,
@@ -13,7 +28,7 @@
     "version": "2.0.8"
   },
   "kerne": 8,
-  "koautor_commits": 1817,
+  "koautor_commits": 1804,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -21,28 +36,28 @@
     "tagessatz": "2.000 €/Tag (netto)",
     "verfuegbar": "ab 15.09.2026"
   },
-  "nachrichten": 2454,
+  "nachrichten": 2529,
   "pr_repos": 32,
-  "prs": 980,
+  "prs": 1001,
   "ram_gb": 12,
   "reise": {
-    "gemessen": 74,
-    "juengste_minuten": 13,
-    "median_minuten": 14,
+    "gemessen": 93,
+    "juengste_minuten": 8,
+    "median_minuten": 12,
     "schnellste_minuten": 4
   },
   "schwarm": {
-    "fertig": 656,
+    "fertig": 660,
     "spitze_stunde": 8,
     "stunden_ab_drei": 43,
-    "tage": 125
+    "tage": 127
   },
-  "sitzungen": 2486,
+  "sitzungen": 2553,
   "skills": 118,
-  "stand": "2026-08-24",
+  "stand": "2026-08-27",
   "start": "2026-03-20",
-  "tage": 157,
-  "testfunktionen": 283,
+  "tage": 160,
+  "testfunktionen": 292,
   "units": 14,
   "weckzeiten_werktag": [
     1,
@@ -61,5 +76,5 @@
     13,
     17
   ],
-  "werkzeuge": 116
+  "werkzeuge": 120
 }
