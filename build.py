@@ -664,6 +664,35 @@ def _messe_vermoegen() -> dict | None:
     }
 
 
+def _messe_pruefung() -> dict | None:
+    """Orthogonales Testen — gezaehlt wird der Vertrag, nicht die Absicht.
+
+    „Welche Pruefung sieht auf eine Flaeche, die ihr Erzeuger nicht sehen
+    kann" ist eine Geschmacksfrage, und eine handverlesene Liste waere genau
+    die getippte Zahl, die es auf dieser Seite nicht gibt. Messbar ist der
+    Vertrag, den diese Pruefungen teilen: ein dritter Ausgang, der `unlesbar`
+    meldet statt `in Ordnung`. Wer nur bestehen oder durchfallen kann, sagt im
+    Zweifel „in Ordnung" — und das ist der Ausfall, gegen den hier gebaut wird.
+
+    `test_x.py` prueft `x.py` und ist selbst keine Pruefung; die Namen tragen
+    Bindestriche, die Testnamen Unterstriche.
+    """
+    ordner = ASSISTANT / "tools"
+    if not ordner.is_dir():
+        return None
+    dateien = [p for p in sorted(ordner.glob("*.py")) if not p.name.startswith("test_")]
+    if not dateien:
+        return None
+    unbekannt = mit_test = 0
+    for datei in dateien:
+        text = datei.read_text(encoding="utf-8", errors="replace")
+        if re.search(r"sys\.exit\(2\)|return 2\b", text):
+            unbekannt += 1
+        if (ordner / f"test_{datei.stem.replace('-', '_')}.py").is_file():
+            mit_test += 1
+    return {"pruefungen": len(dateien), "unbekannt": unbekannt, "mit_test": mit_test}
+
+
 def _messe_buero() -> dict | None:
     """Buchhaltung und Vermoegenserfassung zusammen — oder gar nicht.
 
@@ -767,6 +796,7 @@ def messe() -> dict:
         "schwarm": _messe_schwarm(),
         "fingrab": _messe_fingrab(),
         "buero": _messe_buero(),
+        "pruefung": _messe_pruefung(),
         "konditionen": _lies_konditionen(),
     }
 
@@ -1099,6 +1129,70 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
 
 
 
+def _pruefung_abschnitt(pruefung: dict | None, sprache: str = "de") -> str:
+    """Warum die Pruefungen neben dem Ding stehen und nicht darin.
+
+    Jens am 2026-08-27 21:39, in derselben Liste wie Buchhaltung und
+    Vermoegen: „Orthogonales Testen".
+
+    Der Abschnitt steht bewusst hinter den fuenf Ausfaellen, weil er ihre
+    Antwort ist: jeder dieser Ausfaelle wurde von einem gruenen System
+    gemeldet. Die Zahl, an der das haengt, ist nicht die Zahl der Tests,
+    sondern die Zahl der Pruefungen mit einem dritten Ausgang.
+    """
+    if not pruefung:
+        return ""
+    n = lambda k: zahl(pruefung[k], sprache)  # noqa: E731
+    ohne = zahl(pruefung["pruefungen"] - pruefung["mit_test"], sprache)
+    if sprache == "en":
+        return f"""
+<section class="bahn">
+  <p class="kicker">Orthogonal testing</p>
+  <h2>A check that lives inside the thing it checks inherits its blind spot</h2>
+  <p>Every failure above was reported green by the system that caused it. That
+     is not bad luck, it follows from where the check sat: a send path can
+     prove that a message left, because it wrote the log itself. It cannot
+     prove that the message was the one that was owed. Only something standing
+     outside it can — reading the drafts folder and asking which finished text
+     never went anywhere.</p>
+  <p>So the checks here sit beside the thing, not inside it, and they answer a
+     question their subject cannot ask about itself. Of {n('pruefungen')}
+     programs in the tool folder, {n('unbekannt')} have a third exit: not
+     passed, not failed, but <b>unreadable</b> — and unreadable never counts as
+     fine. {n('mit_test')} of them are covered by tests of their own.</p>
+  <p class="einschraenkung">The honest half. {ohne} of those programs have no
+     test of their own, so they are the layer nothing watches. And every one of
+     them was written after a failure, not before it — the method is good at
+     catching a fault twice, and says nothing about the one nobody has paid
+     for yet.</p>
+</section>
+"""
+    return f"""
+<section class="bahn">
+  <p class="kicker">Orthogonales Testen</p>
+  <h2>Eine Prüfung, die in der Sache steckt, erbt deren blinden Fleck</h2>
+  <p>Jeder der Ausfälle oben wurde von dem System als grün gemeldet, das ihn
+     verursacht hat. Das ist kein Pech, das folgt aus der Stelle, an der die
+     Prüfung saß: der Sendeweg kann belegen, dass eine Nachricht rausging, denn
+     er hat das Protokoll selbst geschrieben. Er kann nicht belegen, dass es
+     die Nachricht war, die geschuldet war. Das kann nur etwas, das daneben
+     steht und im Entwurfsordner nachsieht, welcher fertige Text nie
+     losgeschickt wurde.</p>
+  <p>Die Prüfungen sitzen deshalb neben der Sache, nicht in ihr, und sie
+     beantworten eine Frage, die ihr Gegenstand über sich selbst nicht stellen
+     kann. Von {n('pruefungen')} Programmen im Werkzeugordner haben
+     {n('unbekannt')} einen dritten Ausgang: nicht bestanden, nicht
+     durchgefallen, sondern <b>unlesbar</b> — und unlesbar zählt nie als in
+     Ordnung. {n('mit_test')} davon sind durch eigene Tests gedeckt.</p>
+  <p class="einschraenkung">Die ehrliche Hälfte. {ohne} dieser Programme haben
+     keinen eigenen Test, sie sind also die Schicht, auf die niemand sieht. Und
+     jedes einzelne ist nach einem Ausfall entstanden, nicht davor — das
+     Verfahren fängt einen Fehler zuverlässig beim zweiten Mal und sagt nichts
+     über den, für den noch niemand bezahlt hat.</p>
+</section>
+"""
+
+
 def _buero_abschnitt(buero: dict | None, sprache: str = "de") -> str:
     """Buchhaltung und Vermoegenserfassung — die Arbeit, die nie fertig ist.
 
@@ -1372,6 +1466,7 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
         "SCHWARM": _schwarm_abschnitt(zahlen.get("schwarm"), sprache),
         "FINGRAB": _fingrab_abschnitt(zahlen.get("fingrab"), sprache),
         "BUERO": _buero_abschnitt(zahlen.get("buero"), sprache),
+        "PRUEFUNG": _pruefung_abschnitt(zahlen.get("pruefung"), sprache),
         "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen"), sprache),
     }
 

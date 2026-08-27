@@ -28,7 +28,7 @@
     "version": "2.0.8"
   },
   "kerne": 8,
-  "koautor_commits": 1804,
+  "koautor_commits": 1805,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -39,6 +39,11 @@
   "nachrichten": 2529,
   "pr_repos": 32,
   "prs": 1001,
+  "pruefung": {
+    "mit_test": 33,
+    "pruefungen": 44,
+    "unbekannt": 28
+  },
   "ram_gb": 12,
   "reise": {
     "gemessen": 93,

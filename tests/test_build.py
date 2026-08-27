@@ -1296,5 +1296,112 @@ class TestBueroAbschnitt(unittest.TestCase):
         build.pruefe_zahlen(zahlen)  # darf nicht werfen
 
 
+PRUEFUNG_BEISPIEL = {"pruefungen": 80, "unbekannt": 28, "mit_test": 33}
+
+
+class TestPruefungMessung(unittest.TestCase):
+    """Orthogonales Testen — gezaehlt wird ein Vertrag, keine Meinung.
+
+    „Welche Pruefung sieht orthogonal auf ihren Erzeuger" waere eine
+    Geschmacksfrage und damit getippt. Messbar ist der Vertrag, den diese
+    Pruefungen teilen: ein Ausgang, der `unlesbar` sagt statt `in Ordnung`.
+    """
+
+    def _tools(self, wurzel: Path, dateien: dict):
+        ordner = wurzel / "tools"
+        ordner.mkdir(parents=True)
+        for name, inhalt in dateien.items():
+            (ordner / name).write_text(inhalt, encoding="utf-8")
+        return ordner
+
+    def test_ohne_werkzeuge_gibt_es_none_statt_null(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with unittest.mock.patch.object(build, "ASSISTANT", Path(tmp)):
+                self.assertIsNone(build._messe_pruefung())
+
+    def test_zaehlt_den_unlesbar_ausgang(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._tools(wurzel, {
+                "a.py": "import sys\nsys.exit(2)\n",
+                "b.py": "def f():\n    return 2\n",
+                "c.py": "print('nichts')\n",
+            })
+            with unittest.mock.patch.object(build, "ASSISTANT", wurzel):
+                pruefung = build._messe_pruefung()
+        self.assertEqual(pruefung["pruefungen"], 3)
+        self.assertEqual(pruefung["unbekannt"], 2)
+
+    def test_testdateien_sind_keine_pruefungen(self):
+        # test_x.py prueft x.py — es ist nicht selbst eine Pruefung.
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._tools(wurzel, {
+                "x-y.py": "import sys\nsys.exit(2)\n",
+                "test_x_y.py": "def test_a():\n    pass\n",
+            })
+            with unittest.mock.patch.object(build, "ASSISTANT", wurzel):
+                pruefung = build._messe_pruefung()
+        self.assertEqual(pruefung["pruefungen"], 1)
+        # Der Bindestrich im Namen wird zum Unterstrich im Testnamen.
+        self.assertEqual(pruefung["mit_test"], 1)
+
+    def test_werkzeug_ohne_test_wird_nicht_mitgezaehlt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wurzel = Path(tmp)
+            self._tools(wurzel, {"a.py": "x = 1\n"})
+            with unittest.mock.patch.object(build, "ASSISTANT", wurzel):
+                pruefung = build._messe_pruefung()
+        self.assertEqual(pruefung["mit_test"], 0)
+
+
+class TestPruefungAbschnitt(unittest.TestCase):
+    def test_ohne_messung_faellt_der_abschnitt_weg(self):
+        self.assertEqual(build._pruefung_abschnitt(None), "")
+        self.assertEqual(build._pruefung_abschnitt(None, "en"), "")
+
+    def test_abschnitt_nennt_die_gemessenen_zahlen(self):
+        html = build._pruefung_abschnitt(PRUEFUNG_BEISPIEL)
+        for wert in ("80", "28", "33"):
+            with self.subTest(wert=wert):
+                self.assertIn(wert, html)
+
+    def test_abschnitt_nennt_die_grenze_nicht_nur_die_leistung(self):
+        # 80 - 33 = 47 ohne eigenen Test. Gerechnet, nicht getippt.
+        html = build._pruefung_abschnitt(PRUEFUNG_BEISPIEL)
+        self.assertIn("einschraenkung", html)
+        self.assertIn("47", html)
+
+    def test_englische_fassung_ist_englisch(self):
+        html = build._pruefung_abschnitt(PRUEFUNG_BEISPIEL, "en")
+        for wort in ("Pruefung", "Prüfung", "unlesbar", "Werkzeug"):
+            with self.subTest(wort=wort):
+                self.assertNotIn(wort, html)
+
+    def test_abschnitt_hat_keine_ascii_umschrift(self):
+        html = build._pruefung_abschnitt(PRUEFUNG_BEISPIEL)
+        for falsch in ("Pruefung", "koennen", "waere", "haette"):
+            with self.subTest(falsch=falsch):
+                self.assertNotIn(falsch, html)
+
+    def test_abschnitt_landet_auf_beiden_seiten(self):
+        zahlen = dict(ZAHLEN_BEISPIEL, pruefung=PRUEFUNG_BEISPIEL)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertIn("28", build.rendere(zahlen, sprache))
+
+    def test_seite_baut_auch_ohne_pruefzahlen(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen.pop("pruefung", None)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertNotIn("{{PRUEFUNG}}", build.rendere(zahlen, sprache))
+
+    def test_pruefung_ist_kein_pflichtfeld(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen.pop("pruefung", None)
+        build.pruefe_zahlen(zahlen)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

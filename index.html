@@ -603,7 +603,7 @@ blockquote p.quelle {
     <div class="gitter">
       <div class="kachel"><b>738</b><span>Aufträge an den Nacht-Runner</span></div>
       <div class="kachel"><b>1.001</b><span>gemergte Pull Requests in 32 Repos</span></div>
-      <div class="kachel"><b>1.804</b><span>Commits mit Maschine als Koautor, 69 Repos</span></div>
+      <div class="kachel"><b>1.805</b><span>Commits mit Maschine als Koautor, 69 Repos</span></div>
       <div class="kachel"><b>5.777</b><span>Commits allein im Assistenz-Repo</span></div>
     </div>
 
@@ -616,7 +616,7 @@ blockquote p.quelle {
     </div>
 
     <p class="einschraenkung">Was die Zahlen nicht sagen: die 1.001 Pull Requests und
-       die 1.804 Commits sind nicht alle hier entstanden. Sie zählen alles, woran
+       die 1.805 Commits sind nicht alle hier entstanden. Sie zählen alles, woran
        eine Maschine mitgeschrieben hat, also auch Jens' eigene Sitzungen am Rechner.
        Eindeutig von diesem Aufbau sind die Nachrichten, die Sitzungen, die
        Nachtaufträge und das Assistenz-Repo.</p>
@@ -839,6 +839,31 @@ blockquote p.quelle {
      größte Teil des Harness ist inzwischen nicht Fähigkeit, sondern die Frage, woran
      man merken würde, dass etwas nicht mehr läuft.</p>
 </section>
+
+
+<section class="bahn">
+  <p class="kicker">Orthogonales Testen</p>
+  <h2>Eine Prüfung, die in der Sache steckt, erbt deren blinden Fleck</h2>
+  <p>Jeder der Ausfälle oben wurde von dem System als grün gemeldet, das ihn
+     verursacht hat. Das ist kein Pech, das folgt aus der Stelle, an der die
+     Prüfung saß: der Sendeweg kann belegen, dass eine Nachricht rausging, denn
+     er hat das Protokoll selbst geschrieben. Er kann nicht belegen, dass es
+     die Nachricht war, die geschuldet war. Das kann nur etwas, das daneben
+     steht und im Entwurfsordner nachsieht, welcher fertige Text nie
+     losgeschickt wurde.</p>
+  <p>Die Prüfungen sitzen deshalb neben der Sache, nicht in ihr, und sie
+     beantworten eine Frage, die ihr Gegenstand über sich selbst nicht stellen
+     kann. Von 44 Programmen im Werkzeugordner haben
+     28 einen dritten Ausgang: nicht bestanden, nicht
+     durchgefallen, sondern <b>unlesbar</b> — und unlesbar zählt nie als in
+     Ordnung. 33 davon sind durch eigene Tests gedeckt.</p>
+  <p class="einschraenkung">Die ehrliche Hälfte. 11 dieser Programme haben
+     keinen eigenen Test, sie sind also die Schicht, auf die niemand sieht. Und
+     jedes einzelne ist nach einem Ausfall entstanden, nicht davor — das
+     Verfahren fängt einen Fehler zuverlässig beim zweiten Mal und sagt nichts
+     über den, für den noch niemand bezahlt hat.</p>
+</section>
+
 
 <section class="bahn">
   <p class="kicker">Der Plan</p>

@@ -602,7 +602,7 @@ blockquote p.quelle {
     <div class="gitter">
       <div class="kachel"><b>738</b><span>jobs sent to the night runner</span></div>
       <div class="kachel"><b>1,001</b><span>merged pull requests across 32 repos</span></div>
-      <div class="kachel"><b>1,804</b><span>commits co-authored by a machine, 69 repos</span></div>
+      <div class="kachel"><b>1,805</b><span>commits co-authored by a machine, 69 repos</span></div>
       <div class="kachel"><b>5,777</b><span>commits in the assistant repo alone</span></div>
     </div>
 
@@ -615,7 +615,7 @@ blockquote p.quelle {
     </div>
 
     <p class="einschraenkung">What the numbers do not say: the 1,001 pull requests
-       and the 1,804 commits were not all produced here. They count
+       and the 1,805 commits were not all produced here. They count
        everything a machine helped write, including Jens's own sessions at the
        keyboard. What belongs unambiguously to this setup are the messages, the
        sessions, the night jobs and the assistant repo.</p>
@@ -830,6 +830,29 @@ blockquote p.quelle {
      looking for it. Most of the harness by now is not capability but the question
      of how you would ever notice that something has stopped running.</p>
 </section>
+
+
+<section class="bahn">
+  <p class="kicker">Orthogonal testing</p>
+  <h2>A check that lives inside the thing it checks inherits its blind spot</h2>
+  <p>Every failure above was reported green by the system that caused it. That
+     is not bad luck, it follows from where the check sat: a send path can
+     prove that a message left, because it wrote the log itself. It cannot
+     prove that the message was the one that was owed. Only something standing
+     outside it can — reading the drafts folder and asking which finished text
+     never went anywhere.</p>
+  <p>So the checks here sit beside the thing, not inside it, and they answer a
+     question their subject cannot ask about itself. Of 44
+     programs in the tool folder, 28 have a third exit: not
+     passed, not failed, but <b>unreadable</b> — and unreadable never counts as
+     fine. 33 of them are covered by tests of their own.</p>
+  <p class="einschraenkung">The honest half. 11 of those programs have no
+     test of their own, so they are the layer nothing watches. And every one of
+     them was written after a failure, not before it — the method is good at
+     catching a fault twice, and says nothing about the one nobody has paid
+     for yet.</p>
+</section>
+
 
 <section class="bahn">
   <p class="kicker">The plan</p>
