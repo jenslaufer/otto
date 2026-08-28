@@ -28,7 +28,7 @@
     "version": "2.0.8"
   },
   "kerne": 8,
-  "koautor_commits": 1820,
+  "koautor_commits": 1819,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -46,8 +46,8 @@
   },
   "ram_gb": 12,
   "reise": {
-    "gemessen": 94,
-    "juengste_minuten": 7,
+    "gemessen": 95,
+    "juengste_minuten": 14,
     "median_minuten": 12,
     "schnellste_minuten": 4
   },
