@@ -1,23 +1,23 @@
 {
-  "auftraege": 742,
+  "auftraege": 759,
   "basis": "https://jenslaufer.com/otto/",
   "buero": {
-    "auszuege": 18,
-    "belege": 69,
-    "buch_commits": 66,
-    "buch_maschine": 45,
-    "buchungen": 164,
+    "auszuege": 24,
+    "belege": 82,
+    "buch_commits": 79,
+    "buch_maschine": 57,
+    "buchungen": 177,
     "jahr": 2026,
-    "kalendertage": 166,
+    "kalendertage": 195,
     "luecke": 12,
     "posten": 32,
     "posten_maschine": 26,
     "quellen": 5,
     "reihe_seit": 2020,
-    "snapshots": 131
+    "snapshots": 160
   },
-  "codezeilen": 32264,
-  "commits_assistant": 6069,
+  "codezeilen": 54629,
+  "commits_assistant": 7651,
   "cpu": "AMD Ryzen 5 3500U",
   "fingrab": {
     "dateien": 8,
@@ -25,45 +25,45 @@
     "minus": 144,
     "plus": 674,
     "uhrzeit": "03:26",
-    "version": "2.0.8"
+    "version": "2.0.9"
   },
   "kerne": 8,
-  "koautor_commits": 1871,
-  "koautor_repos": 70,
+  "koautor_commits": 2814,
+  "koautor_repos": 75,
   "konditionen": {
     "einsatzort": "weltweit",
     "remote": "95 %",
     "tagessatz": "2.000 €/Tag (netto)",
     "verfuegbar": "ab 15.09.2026"
   },
-  "nachrichten": 2650,
-  "pr_repos": 32,
-  "prs": 1010,
+  "nachrichten": 3092,
+  "pr_repos": 38,
+  "prs": 1196,
   "pruefung": {
-    "mit_test": 41,
-    "pruefungen": 52,
-    "unbekannt": 34
+    "mit_test": 66,
+    "pruefungen": 78,
+    "unbekannt": 58
   },
   "ram_gb": 12,
   "reise": {
     "gemessen": 108,
     "juengste_minuten": 7,
-    "median_minuten": 13,
+    "median_minuten": 14,
     "schnellste_minuten": 4
   },
   "schwarm": {
-    "fertig": 664,
+    "fertig": 680,
     "spitze_stunde": 8,
     "stunden_ab_drei": 43,
-    "tage": 129
+    "tage": 142
   },
-  "sitzungen": 2611,
-  "skills": 118,
-  "stand": "2026-09-02",
+  "sitzungen": 2891,
+  "skills": 64,
+  "stand": "2026-10-01",
   "start": "2026-03-20",
-  "tage": 166,
-  "testfunktionen": 368,
-  "units": 14,
+  "tage": 195,
+  "testfunktionen": 1039,
+  "units": 16,
   "weckzeiten_werktag": [
     1,
     2,
@@ -81,5 +81,5 @@
     13,
     17
   ],
-  "werkzeuge": 136
+  "werkzeuge": 194
 }
