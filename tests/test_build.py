@@ -253,6 +253,23 @@ class TestMessen(unittest.TestCase):
             build.pruefe_zahlen(kaputt)
 
 
+class TestPrRepos(unittest.TestCase):
+    """Welche Klone zaehlen zur PR-Zahl. Am 07.10.2026 fiel sie von 1.196
+    auf 1.160, weil kanban und buchhaltungPy in die Solytics-Org umgezogen
+    waren — eine Summe, die fallen kann, obwohl nichts verschwand."""
+
+    def test_eigenes_konto(self):
+        self.assertEqual(build.pr_repo("git@github.com:jenslaufer/otto.git"), "jenslaufer/otto")
+
+    def test_umgezogen_in_die_firmen_org(self):
+        self.assertEqual(build.pr_repo("git@github.com:Solytics/kanban.git"), "Solytics/kanban")
+        self.assertEqual(build.pr_repo("https://github.com/Solytics/buchhaltungPy"), "Solytics/buchhaltungPy")
+
+    def test_fremde_repos_zaehlen_nicht(self):
+        self.assertIsNone(build.pr_repo("https://github.com/NousResearch/hermes-agent.git"))
+        self.assertIsNone(build.pr_repo("git@gitlab.com:jenslaufer/investments.git"))
+
+
 class TestReiseAbschnitt(unittest.TestCase):
     """Der Abschnitt ueber die laufende Reise ist der einzige Beleg auf dieser
     Seite, den ein Leser anklicken und selbst nachlesen kann. Alles andere ist
