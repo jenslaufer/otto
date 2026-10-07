@@ -801,6 +801,16 @@ def messe() -> dict:
     }
 
 
+def pr_repo(url: str) -> str | None:
+    """`owner/name` eines eigenen GitHub-Repos, sonst None.
+
+    Eigen heisst: Jens' Konto oder seine Firmen-Org. Ohne Solytics fiel die
+    Summe, als kanban und buchhaltungPy dorthin umzogen.
+    """
+    treffer = re.search(r"github\.com[:/]((?:jenslaufer|Solytics)/[^/\s]+?)(?:\.git)?\s*$", url)
+    return treffer.group(1) if treffer else None
+
+
 def hole_pr_zahlen() -> tuple[int | None, int | None]:
     """Gemergte Pull Requests ohne Dependabot, ueber die GitHub-CLI.
 
@@ -813,14 +823,13 @@ def hole_pr_zahlen() -> tuple[int | None, int | None]:
     for ordner in sorted(REPOS.iterdir()):
         if not (ordner / ".git").exists():
             continue
-        url = _git(ordner, ["remote", "get-url", "origin"]) or ""
-        treffer = re.search(r"github\.com[:/](jenslaufer/[^/\s]+?)(?:\.git)?\s*$", url)
-        if not treffer or treffer.group(1) in gesehen:
+        repo = pr_repo(_git(ordner, ["remote", "get-url", "origin"]) or "")
+        if not repo or repo in gesehen:
             continue
-        gesehen.add(treffer.group(1))
+        gesehen.add(repo)
         try:
             lauf = subprocess.run(
-                ["gh", "pr", "list", "--repo", treffer.group(1), "--state", "merged",
+                ["gh", "pr", "list", "--repo", repo, "--state", "merged",
                  "--limit", "1000", "--json", "author",
                  "--jq", '[.[] | select(.author.login != "dependabot[bot]")] | length'],
                 capture_output=True, text=True, timeout=60,
