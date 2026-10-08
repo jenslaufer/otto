@@ -363,7 +363,6 @@ class TestKonditionen(unittest.TestCase):
         with self.datei(self.CSV):
             k = build._lies_konditionen()
         self.assertEqual(k["tagessatz"], "2.000 €/Tag (netto)")
-        self.assertEqual(k["verfuegbar"], "ab 15.09.2026")
         self.assertEqual(k["remote"], "95 %")
         self.assertEqual(k["einsatzort"], "weltweit")
 
@@ -393,7 +392,7 @@ class TestKonditionen(unittest.TestCase):
         with self.datei(self.CSV):
             html = build._buchen_abschnitt(build._lies_konditionen())
         self.assertIn("2.000", html)
-        self.assertIn("15.09.2026", html)
+        self.assertIn("10.10.2026", html)
 
     def test_abschnitt_nennt_beide_rollen(self):
         html = build._buchen_abschnitt(None)
@@ -404,6 +403,38 @@ class TestKonditionen(unittest.TestCase):
         html = build._buchen_abschnitt(None)
         self.assertIn("cv.jenslaufer.com", html)
         self.assertIn("linkedin.com/in/jenslaufer", html)
+
+    # Seit 10.09. fuehrt der Lebenslauf Stundensaetze statt eines Tagessatzes.
+    # Der Leser kannte nur `Tagessatz`, gab None zurueck, und der Build behielt
+    # den alten Wert: die Seite warb bis 08.10. mit 2.000 €/Tag gegen 95 €/h.
+    CSV_STUNDE = "field,value\nRate Vor-Ort,100 €/h (netto)\nRate Remote,95 €/h (netto)\n" \
+                 "Anteil Remote,100 %\nVerfügbarkeit,ab sofort\nEinsatzort,nur remote\n"
+
+    def test_liest_den_stundensatz_remote(self):
+        with self.datei(self.CSV_STUNDE):
+            k = build._lies_konditionen()
+        self.assertEqual(k["tagessatz"], "95 €/h (netto)")
+        self.assertEqual(k["remote"], "100 %")
+        self.assertEqual(k["einsatzort"], "nur remote")
+
+    def test_stundensatz_heisst_nicht_tagessatz(self):
+        with self.datei(self.CSV_STUNDE):
+            html = build._buchen_abschnitt(build._lies_konditionen())
+        self.assertIn("95 €/h", html)
+        self.assertNotIn("Tagessatz", html)
+        self.assertIn("Stundensatz", html)
+
+    def test_stundensatz_englisch(self):
+        with self.datei(self.CSV_STUNDE):
+            zeilen = dict(build._konditionen_en(build._lies_konditionen()))
+        self.assertEqual(zeilen["Hourly rate"], "€95/h (net)")
+        self.assertEqual(zeilen["Based"], "remote only")
+
+    def test_verfuegbarkeit_von_jens_sticht_den_lebenslauf(self):
+        # Jens 08.10. (#441): auf dieser Seite „ab 10.10.2026".
+        with self.datei(self.CSV_STUNDE):
+            k = build._lies_konditionen()
+        self.assertEqual(k["verfuegbar"], "ab 10.10.2026")
 
     def test_konditionen_sind_kein_pflichtfeld(self):
         self.assertNotIn("konditionen", build.PFLICHTFELDER)

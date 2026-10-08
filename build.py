@@ -133,6 +133,8 @@ REISE_SEITE_EN = "https://jenslaufer.com/malaysia/en/"
 KONDITIONEN = Path(
     os.environ.get("OTTO_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
 )
+# Jens 08.10.2026 (#441) fuer diese Seite; der Lebenslauf sagt „ab sofort".
+VERFUEGBAR = "ab 10.10.2026"
 LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
 # Die eine Adresse, die auf diese Seite GEHOERT — und die der eigene Waechter
 # bis zum 17.08. verhindert hat. `MUSTER` unten sperrt jede E-Mail-Adresse,
@@ -994,11 +996,13 @@ def _lies_konditionen() -> dict | None:
             continue
         name, _, wert = zeile.partition(",")
         felder[name.strip()] = wert.strip()
-    if not felder.get("Tagessatz"):
+    # Seit 10.09. fuehrt der Lebenslauf Stundensaetze statt eines Tagessatzes.
+    satz = felder.get("Tagessatz") or felder.get("Rate Remote")
+    if not satz:
         return None
     return {
-        "tagessatz": felder["Tagessatz"],
-        "verfuegbar": felder.get("Verfügbarkeit", ""),
+        "tagessatz": satz,
+        "verfuegbar": VERFUEGBAR or felder.get("Verfügbarkeit", ""),
         "remote": felder.get("Anteil Remote", ""),
         "einsatzort": felder.get("Einsatzort", ""),
     }
@@ -1028,13 +1032,16 @@ def _konditionen_en(konditionen: dict) -> list[tuple[str, str]]:
     treffer = re.fullmatch(r"([\d.]+)\s*€/Tag\s*\(netto\)", satz.strip())
     if treffer:
         satz = f"€{treffer.group(1).replace('.', ',')}/day (net)"
-    zeilen.append(("Day rate", satz))
+    stunde = re.fullmatch(r"(\d+)\s*€/h\s*\(netto\)", satz.strip())
+    if stunde:
+        satz = f"€{stunde.group(1)}/h (net)"
+    zeilen.append(("Hourly rate" if stunde else "Day rate", satz))
 
     if konditionen.get("remote"):
         zeilen.append(("Remote", konditionen["remote"]))
     if konditionen.get("einsatzort"):
         ort = konditionen["einsatzort"]
-        zeilen.append(("Based", {"weltweit": "worldwide"}.get(ort.strip().lower(), ort)))
+        zeilen.append(("Based", {"weltweit": "worldwide", "nur remote": "remote only"}.get(ort.strip().lower(), ort)))
     return zeilen
 
 
@@ -1092,7 +1099,8 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
     if konditionen:
         if konditionen.get("verfuegbar"):
             zeilen.append(("Verfügbar", konditionen["verfuegbar"]))
-        zeilen.append(("Tagessatz", konditionen["tagessatz"]))
+        satz = konditionen["tagessatz"]
+        zeilen.append(("Stundensatz" if "/h" in satz else "Tagessatz", satz))
         if konditionen.get("remote"):
             zeilen.append(("Remote", konditionen["remote"]))
         if konditionen.get("einsatzort"):
