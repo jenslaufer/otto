@@ -334,18 +334,17 @@ class TestReiseAbschnitt(unittest.TestCase):
 
 
 class TestKonditionen(unittest.TestCase):
-    """Der Tagessatz auf dieser Seite wird gelesen, nicht getippt.
+    """Auf dieser Seite steht kein Satz, nur „nach Projekt".
 
-    Jens hat drei eigene Flaechen mit drei verschiedenen Saetzen (Lebenslauf
-    2.000, freelancermap 800, Markt 640 — am 15.08. von ihm selbst gemessen).
-    Eine vierte getippte Zahl waere die vierte Wahrheit. Deshalb liest der Build
-    dieselbe Datei, aus der auch der Lebenslauf baut: aendert Jens sie, bewegen
-    sich beide Seiten. Fehlt sie, steht hier KEIN Satz — eine erfundene Zahl auf
-    einer Angebotsseite ist der teuerste Fehler, den diese Seite machen kann.
+    Jens 08.10.2026: „95 ist der Stundensatz nur, wenn ein Vermittler dazwischen
+    ist. Sonst ist 1000 pro Tag. Und es gibt keinen generellen Stundensatz. Das
+    haengt immer vom Projekt ab." Der Lebenslauf (`cv/data/konditionen.csv`)
+    geht an Vermittler und traegt deren Satz; diese Seite spricht Direktkunden
+    an. Aus der Datei liest sie darum nur Verfuegbarkeit, Remote und Einsatzort.
     """
 
-    CSV = "field,value\nTagessatz,2.000 €/Tag (netto)\nAnteil Remote,95 %\n" \
-          "Verfügbarkeit,ab 15.09.2026\nEinsatzort,weltweit\n"
+    CSV = "field,value\nRate Vor-Ort,100 €/h (netto)\nRate Remote,95 €/h (netto)\n" \
+          "Anteil Remote,100 %\nVerfügbarkeit,ab sofort\nEinsatzort,nur remote\n"
 
     @contextlib.contextmanager
     def datei(self, inhalt):
@@ -362,10 +361,13 @@ class TestKonditionen(unittest.TestCase):
     def test_liest_die_felder_aus_der_lebenslauf_datei(self):
         with self.datei(self.CSV):
             k = build._lies_konditionen()
-        self.assertEqual(k["tagessatz"], "2.000 €/Tag (netto)")
-        self.assertEqual(k["verfuegbar"], "ab 15.09.2026")
-        self.assertEqual(k["remote"], "95 %")
-        self.assertEqual(k["einsatzort"], "weltweit")
+        self.assertEqual(k["remote"], "100 %")
+        self.assertEqual(k["einsatzort"], "nur remote")
+
+    def test_verfuegbarkeit_von_jens_sticht_den_lebenslauf(self):
+        # Jens 08.10. (#441): auf dieser Seite „ab 10.10.2026".
+        with self.datei(self.CSV):
+            self.assertEqual(build._lies_konditionen()["verfuegbar"], "ab 10.10.2026")
 
     def test_fehlende_datei_gibt_None_statt_erfundener_werte(self):
         alt = build.KONDITIONEN
@@ -375,11 +377,25 @@ class TestKonditionen(unittest.TestCase):
         finally:
             build.KONDITIONEN = alt
 
-    def test_datei_ohne_tagessatz_gibt_None(self):
-        # Halb gelesen ist hier schlimmer als gar nicht: der Abschnitt wuerde
-        # sonst eine Verfuegbarkeit ohne Preis behaupten.
-        with self.datei("field,value\nEinsatzort,weltweit\n"):
-            self.assertIsNone(build._lies_konditionen())
+    def test_vermittler_satz_steht_nie_auf_der_seite(self):
+        with self.datei(self.CSV):
+            k = build._lies_konditionen()
+        for html in (build._buchen_abschnitt(k), build._buchen_abschnitt(k, "en")):
+            self.assertNotIn("€", html)
+            self.assertNotIn("95", html)
+
+    def test_satz_heisst_nach_projekt(self):
+        with self.datei(self.CSV):
+            k = build._lies_konditionen()
+        self.assertIn("nach Projekt", build._buchen_abschnitt(k))
+        self.assertIn("per project", build._buchen_abschnitt(k, "en"))
+        self.assertNotIn("Stundensatz", build._buchen_abschnitt(k))
+
+    def test_englisch_uebersetzt_ort_und_datum(self):
+        with self.datei(self.CSV):
+            zeilen = dict(build._konditionen_en(build._lies_konditionen()))
+        self.assertEqual(zeilen["Available"], "from 10 October 2026")
+        self.assertEqual(zeilen["Based"], "remote only")
 
     def test_abschnitt_ohne_konditionen_nennt_keinen_preis(self):
         html = build._buchen_abschnitt(None)
@@ -388,12 +404,6 @@ class TestKonditionen(unittest.TestCase):
         # Der Abschnitt selbst bleibt: wer ihn liest, soll trotzdem wissen,
         # was Jens macht und wie man ihn erreicht.
         self.assertIn("linkedin.com/in/jenslaufer", html)
-
-    def test_abschnitt_mit_konditionen_nennt_satz_und_verfuegbarkeit(self):
-        with self.datei(self.CSV):
-            html = build._buchen_abschnitt(build._lies_konditionen())
-        self.assertIn("2.000", html)
-        self.assertIn("15.09.2026", html)
 
     def test_abschnitt_nennt_beide_rollen(self):
         html = build._buchen_abschnitt(None)
@@ -619,18 +629,14 @@ class TestZweisprachig(unittest.TestCase):
                                    zahlen_ziel=Path(ordner) / "zahlen.json")
 
     def test_englische_konditionen_erfinden_nichts(self):
-        roh = {"tagessatz": "2.000 €/Tag (netto)", "verfuegbar": "ab 15.09.2026",
-               "remote": "95 %", "einsatzort": "weltweit"}
+        roh = {"verfuegbar": "ab 15.09.2026", "remote": "95 %", "einsatzort": "weltweit"}
         block = build._buchen_abschnitt(roh, "en")
-        self.assertIn("2,000", block)
         self.assertIn("15 September 2026", block)
         self.assertIn("worldwide", block)
         # Unbekannte Schreibweise: lieber der Originalwert als eine Erfindung.
         fremd = build._buchen_abschnitt(
-            {"tagessatz": "nach Absprache", "verfuegbar": "sofort",
-             "remote": "", "einsatzort": ""}, "en")
+            {"verfuegbar": "nach Absprache", "remote": "", "einsatzort": ""}, "en")
         self.assertIn("nach Absprache", fremd)
-        self.assertIn("sofort", fremd)
 
 
 class TestSitemap(unittest.TestCase):
