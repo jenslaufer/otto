@@ -124,15 +124,16 @@ REISE_SEITE = "https://jenslaufer.com/malaysia/"
 # Behauptung, ein 404 auf der Arbeitsprobe ist der teuerste Tippfehler.
 REISE_SEITE_EN = "https://jenslaufer.com/malaysia/en/"
 
-# Der Tagessatz wird gelesen, nicht getippt — aus derselben Datei, aus der auch
-# cv.jenslaufer.com baut. Jens hat drei eigene Flaechen mit drei verschiedenen
-# Saetzen (Lebenslauf 2.000, freelancermap 800, Markt 640; von ihm selbst am
-# 15.08. gemessen). Eine vierte getippte Zahl waere die vierte Wahrheit. So
-# bewegen sich Lebenslauf und diese Seite gemeinsam, wenn er sie aendert.
-# Fehlt die Datei, steht hier gar kein Satz statt eines erfundenen.
+# Verfuegbarkeit, Remote und Einsatzort kommen aus derselben Datei, aus der
+# cv.jenslaufer.com baut. Den Satz darin nicht: er gilt nur ueber Vermittler.
 KONDITIONEN = Path(
     os.environ.get("OTTO_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
 )
+# Jens 08.10.2026 (#441) fuer diese Seite; der Lebenslauf sagt „ab sofort".
+VERFUEGBAR = "ab 10.10.2026"
+# Jens 08.10.2026: „es gibt keinen generellen Stundensatz. Das haengt immer vom
+# Projekt ab." Der Satz im Lebenslauf gilt nur ueber Vermittler.
+SATZ = ("nach Projekt", "per project")
 LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
 # Die eine Adresse, die auf diese Seite GEHOERT — und die der eigene Waechter
 # bis zum 17.08. verhindert hat. `MUSTER` unten sperrt jede E-Mail-Adresse,
@@ -978,11 +979,10 @@ def _reise_abschnitt(reise: dict | None, sprache: str = "de") -> str:
 
 
 def _lies_konditionen() -> dict | None:
-    """Tagessatz und Verfuegbarkeit aus der Lebenslauf-Datei, oder None.
+    """Verfuegbarkeit, Remote und Einsatzort aus der Lebenslauf-Datei, oder None.
 
-    Halb gelesen waere schlimmer als gar nicht: ein Abschnitt, der eine
-    Verfuegbarkeit ohne Preis nennt, sieht aus wie eine Entscheidung. Ohne
-    Tagessatz gibt es deshalb nichts.
+    Den Satz liest die Seite nicht: der Lebenslauf geht an Vermittler und
+    traegt deren Satz, diese Seite spricht Direktkunden an (`SATZ`).
     """
     try:
         roh = KONDITIONEN.read_text(encoding="utf-8")
@@ -994,11 +994,8 @@ def _lies_konditionen() -> dict | None:
             continue
         name, _, wert = zeile.partition(",")
         felder[name.strip()] = wert.strip()
-    if not felder.get("Tagessatz"):
-        return None
     return {
-        "tagessatz": felder["Tagessatz"],
-        "verfuegbar": felder.get("Verfügbarkeit", ""),
+        "verfuegbar": VERFUEGBAR or felder.get("Verfügbarkeit", ""),
         "remote": felder.get("Anteil Remote", ""),
         "einsatzort": felder.get("Einsatzort", ""),
     }
@@ -1007,12 +1004,10 @@ def _lies_konditionen() -> dict | None:
 def _konditionen_en(konditionen: dict) -> list[tuple[str, str]]:
     """Die Konditionen fuer englische Leser, ohne eine einzige neue Zahl.
 
-    Der Wert kommt aus `cv/data/konditionen.csv` und ist deutsch geschrieben
-    ("2.000 €/Tag (netto)", "ab 15.09.2026"). Uebersetzt wird nur die
-    Schreibweise, nie der Inhalt: 2.000 muss auf Englisch 2,000 heissen, sonst
-    liest es sich als zwei Euro. Passt ein Wert auf kein bekanntes Muster,
-    steht er unveraendert da — ein unuebersetzter Originalwert ist ein
-    Schoenheitsfehler, ein erfundener Tagessatz ist ein Schaden.
+    Die Werte sind deutsch geschrieben ("ab 10.10.2026", "nur remote").
+    Uebersetzt wird nur die Schreibweise, nie der Inhalt. Passt ein Wert auf
+    kein bekanntes Muster, steht er unveraendert da — ein unuebersetzter
+    Originalwert ist ein Schoenheitsfehler, ein erfundener ein Schaden.
     """
     zeilen = []
 
@@ -1024,17 +1019,13 @@ def _konditionen_en(konditionen: dict) -> list[tuple[str, str]]:
             verfuegbar = f"from {int(tag)} {MONATE_EN[int(monat) - 1]} {jahr}"
         zeilen.append(("Available", verfuegbar))
 
-    satz = konditionen["tagessatz"]
-    treffer = re.fullmatch(r"([\d.]+)\s*€/Tag\s*\(netto\)", satz.strip())
-    if treffer:
-        satz = f"€{treffer.group(1).replace('.', ',')}/day (net)"
-    zeilen.append(("Day rate", satz))
+    zeilen.append(("Rate", SATZ[1]))
 
     if konditionen.get("remote"):
         zeilen.append(("Remote", konditionen["remote"]))
     if konditionen.get("einsatzort"):
         ort = konditionen["einsatzort"]
-        zeilen.append(("Based", {"weltweit": "worldwide"}.get(ort.strip().lower(), ort)))
+        zeilen.append(("Based", {"weltweit": "worldwide", "nur remote": "remote only"}.get(ort.strip().lower(), ort)))
     return zeilen
 
 
@@ -1079,12 +1070,11 @@ def _buchen_abschnitt_en(konditionen: dict | None) -> str:
 
 
 def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
-    """Wofuer man Jens bucht, ab wann, und was es kostet.
+    """Wofuer man Jens bucht und ab wann.
 
     Der Abschnitt bleibt auch ohne Konditionen stehen — wer bis hierher gelesen
-    hat, soll erfahren, was Jens macht und wie er erreichbar ist. Es faellt nur
-    die Zeile mit dem Satz weg, denn die einzige Zahl auf dieser Seite, die
-    nicht gemessen werden kann, darf auch nicht geraten werden.
+    hat, soll erfahren, was Jens macht und wie er erreichbar ist. Eine Zahl
+    steht nie da: der Satz haengt vom Projekt ab (`SATZ`).
     """
     if sprache == "en":
         return _buchen_abschnitt_en(konditionen)
@@ -1092,7 +1082,7 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
     if konditionen:
         if konditionen.get("verfuegbar"):
             zeilen.append(("Verfügbar", konditionen["verfuegbar"]))
-        zeilen.append(("Tagessatz", konditionen["tagessatz"]))
+        zeilen.append(("Satz", SATZ[0]))
         if konditionen.get("remote"):
             zeilen.append(("Remote", konditionen["remote"]))
         if konditionen.get("einsatzort"):
@@ -1491,7 +1481,7 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
 # ------------------------------------------------------------- Rechtsseiten
 
 # Von Jens am 17.08. 12:32 bestellt: „Impressum und Datenschutzerklaerung muss
-# rein." Die Seite nennt einen Tagessatz, damit ist sie ein Angebot — beides
+# rein." Die Seite bietet Jens zur Buchung an, damit ist sie ein Angebot — beides
 # ist Pflicht (§ 5 DDG, Art. 13 DSGVO). Die Texte stehen in `template/`, weil
 # Prosa in Vorlagen gehoert; die Stammdaten stehen in EINER Tabelle oben,
 # damit die vier Fassungen nicht auseinanderlaufen koennen.
