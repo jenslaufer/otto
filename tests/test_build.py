@@ -1426,5 +1426,52 @@ class TestPruefungAbschnitt(unittest.TestCase):
         build.pruefe_zahlen(zahlen)
 
 
+class TestKopfzeile(unittest.TestCase):
+    """Die Seite haengt unter jenslaufer.com, hatte aber keinen Weg zurueck.
+
+    Erik Heinz (Mail 11.10.2026): Otto und Malaysia tragen keine Kopfzeile mit
+    Menue. Das Blog verlinkt beide, umgekehrt fuehrte nur der Sprachwechsel
+    heraus. Jens am 12.10.: einbauen.
+    """
+
+    MENUE = ("/menu/about.html", "/menu/writing.html", "/menu/contact.html")
+
+    def test_beide_sprachen_fuehren_zur_startseite(self):
+        for sprache in ("de", "en"):
+            html = build.rendere(ZAHLEN_BEISPIEL, sprache)
+            self.assertIn('class="kopfzeile"', html, sprache)
+            self.assertIn('<a class="kopfzeile-name" href="/">Jens Laufer</a>', html, sprache)
+
+    def test_menue_ist_das_des_blogs(self):
+        for sprache in ("de", "en"):
+            html = build.rendere(ZAHLEN_BEISPIEL, sprache)
+            for ziel in self.MENUE:
+                self.assertIn(f'href="{ziel}"', html, f"{sprache}: {ziel} fehlt")
+            self.assertIn('href="/malaysia/', html, sprache)
+
+    def test_menue_zeigt_auf_die_eigene_sprache(self):
+        de = build.rendere(ZAHLEN_BEISPIEL, "de")
+        en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn('<a href="/otto/" aria-current="page">Otto</a>', de)
+        self.assertIn('<a href="/malaysia/">Malaysia</a>', de)
+        self.assertIn('<a href="/otto/en/" aria-current="page">Otto</a>', en)
+        self.assertIn('<a href="/malaysia/en/">Malaysia</a>', en)
+
+    def test_rechtsseiten_tragen_dieselbe_kopfzeile(self):
+        for art in ("impressum", "datenschutz"):
+            de = build.rendere_recht(art, "de")
+            en = build.rendere_recht(art, "en")
+            for html in (de, en):
+                self.assertIn('<a class="kopfzeile-name" href="/">Jens Laufer</a>', html, art)
+                self.assertIn('href="/menu/writing.html"', html, art)
+                self.assertIn('class="sprachwechsel"', html, art)
+            self.assertIn('<a href="/otto/">Otto</a>', de)
+            self.assertIn('<a href="/malaysia/en/">Malaysia</a>', en)
+
+    def test_sprachwechsel_bleibt(self):
+        for sprache in ("de", "en"):
+            self.assertIn('class="sprachwechsel"', build.rendere(ZAHLEN_BEISPIEL, sprache))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

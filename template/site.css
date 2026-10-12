@@ -421,16 +421,27 @@ blockquote p {
    und ist bewusst still: wer die Seite in seiner Sprache aufmacht, soll nicht
    zuerst eine Sprachauswahl lesen muessen. */
 
-.sprachwechsel {
-  position: absolute;
-  top: 0; right: 0;
-  display: flex; gap: 0.9rem;
+/* Kopfzeile des Blogs (jenslaufer.com): Name zur Startseite, dasselbe Menue.
+   Vorher fuehrte nur der Sprachwechsel von der Seite weg (Erik Heinz, 11.10.). */
+.kopfzeile {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 0.4rem 1.4rem;
   padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--linie);
+}
+.kopfzeile-name { font-weight: 600; color: var(--tinte); text-decoration: none; }
+.kopfzeile-menue { display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; }
+.kopfzeile-menue, .sprachwechsel {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+.kopfzeile-menue a { color: var(--akzent); text-decoration: none; border-bottom: 1px solid transparent; }
+.kopfzeile-menue a:hover { border-bottom-color: var(--akzent); }
+.kopfzeile-menue a[aria-current] { color: var(--gedimmt); }
+
+.sprachwechsel { display: flex; gap: 0.9rem; margin-left: auto; }
 .sprachwechsel span { color: var(--gedimmt); }
 .sprachwechsel a { color: var(--akzent); text-decoration: none; border-bottom: 1px solid transparent; }
 .sprachwechsel a:hover { border-bottom-color: var(--akzent); }
